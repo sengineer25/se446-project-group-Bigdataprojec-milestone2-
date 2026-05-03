@@ -82,6 +82,43 @@ in-memory rather than the disk shuffle required by streaming MapReduce.
 
 ---
 
+## Task 2 — Location hotspots (Spark SQL)
+**Author:** Jenna Alqurashi (231614, `Jennaalqurashi`)
+
+```python
+df.createOrReplaceTempView("crimes")
+top_locations = spark.sql("""
+    SELECT `Location Description` AS location,
+           COUNT(*)                AS occurrences
+    FROM crimes
+    WHERE `Location Description` IS NOT NULL
+    GROUP BY `Location Description`
+    ORDER BY occurrences DESC
+    LIMIT 10
+""")
+```
+
+**M1 ↔ M2 — Top 10 locations:**
+
+| Location | M1 | M2 (Spark cluster) |
+|---|---:|---:|
+| STREET | 245,437 | 248,326 |
+| RESIDENCE | 136,238 | 136,393 |
+| APARTMENT | 60,925 | 61,235 |
+| SIDEWALK | 47,407 | 47,506 |
+| OTHER | 29,213 | 29,671 |
+| PARKING LOT/GARAGE(NON.RESID.) | 21,876 | 22,436 |
+| ALLEY | 18,258 | 18,349 |
+| SCHOOL, PUBLIC, BUILDING | 20,516 | 15,776 |
+| RESIDENCE-GARAGE | 14,266 | 14,291 |
+| SMALL RETAIL STORE | 13,755 | 13,804 |
+
+Slight differences come from M1's manual CSV split dropping a few hundred edge-case
+rows that Spark's CSV parser keeps. Spark SQL is more concise than the equivalent
+mapper.
+
+---
+
 # Phase B — MLlib arrest predictor (5% sample)
 
 The May 2026 spec update mandates training on a 5% sample. We apply
@@ -109,6 +146,33 @@ Sample feature vectors (cluster):
 ```
 
 Vector layout: `[primary_type_idx, Hour, District, domestic_idx]`.
+
+---
+
+## Task 6 — Train and evaluate three classifiers
+**Author:** Jenna Alqurashi (231614, `Jennaalqurashi`)
+
+Cluster results (5% sample, full HDFS dataset):
+
+| Model | Params | Train (s) | AUC | Accuracy | F1 | Precision | Recall |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Logistic Regression | maxIter=100, regParam=0.01 | 24.6 | 0.6022 | 0.7280 | 0.6376 | 0.6923 | 0.7280 |
+| **Random Forest** | numTrees=100, maxDepth=5, maxBins=64 | 33.0 | **0.8061** | **0.8156** | **0.7802** | **0.8528** | **0.8156** |
+| GBT | maxIter=50, maxDepth=5, maxBins=64 | — | — | — | — | — | — |
+
+Local notebook (W09B 10K → 5% = 490 rows):
+
+| Model | AUC | Accuracy | F1 | Train (s) |
+|---|---:|---:|---:|---:|
+| Logistic Regression | 0.6307 | 0.6535 | 0.6177 | 11.5 |
+| Random Forest       | 0.8701 | 0.8911 | 0.8899 | 11.4 |
+| GBT                 | 0.8710 | 0.8515 | 0.8498 | 26.0 |
+
+**Confusion matrices (cluster, TN/FP/FN/TP):**
+- LR: (5549, 93, 2030, 133)
+- RF: (5641, 1, 1438, 725)
+
+**Top model by AUC: Random Forest (0.8061 cluster, 0.8701 local).**
 
 ---
 
