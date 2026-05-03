@@ -48,6 +48,8 @@ training Logistic Regression, Random Forest, and Gradient-Boosted Trees on a 5% 
 model on the cluster sample (AUC 0.8061), confirmed locally on the W09B 10K-row sample
 (AUC 0.8701).
 
+---
+
 # Phase A — DataFrame analytics on the full dataset
 
 ## Task 1 — Crime type distribution
@@ -151,14 +153,38 @@ chart at `output/yearly_trend.png`.
 
 ---
 
+## Task 4 — Arrest rate analysis
+**Author:** Dana Alnahas (231515, `d-1117`)
+
+**Cluster — overall:** **221,932 / 793,073 = 27.98%** (matches M1 within rounding).
+
+**Per-crime-type (top 10 by arrest rate, min 100 incidents):**
+
+| Crime type | Incidents | Arrest rate |
+|---|---:|---:|
+| NARCOTICS | 74,127 | 99.88% |
+| PROSTITUTION | 9,100 | 99.88% |
+| LIQUOR LAW VIOLATION | 2,349 | 99.83% |
+| GAMBLING | 1,314 | 99.77% |
+| INTERFERENCE WITH PUBLIC OFFICER | 803 | 80.70% |
+| WEAPONS VIOLATION | 8,893 | 74.60% |
+| CRIMINAL TRESPASS | 21,476 | 73.58% |
+| PUBLIC PEACE VIOLATION | 1,827 | 66.83% |
+| HOMICIDE | 13,173 | 48.11% |
+| SEX OFFENSE | 3,932 | 32.38% |
+
+The arrest rate has a bimodal shape: proactive-policing crimes near 100% (the report
+exists *because* an officer made the stop) versus reactive-reporting crimes like THEFT
+(14.2%) and BURGLARY (6.7%). Phase B's ML model exploits this structure.
+
+---
+
 # Phase B — MLlib arrest predictor (5% sample)
 
 The May 2026 spec update mandates training on a 5% sample. We apply
 `df.sample(fraction=0.05, seed=42)` before any feature engineering. On the cluster
 this gives 39,534 rows (Train 31,728 / Test 7,806); locally the W09B 10K generator
 produces 490 sampled rows.
-
----
 
 ## Task 5 — Feature pipeline
 **Author:** Aseel Alzahrani (221581, `Aseel-Alz`)
@@ -178,8 +204,6 @@ Sample feature vectors (cluster):
 ```
 
 Vector layout: `[primary_type_idx, Hour, District, domestic_idx]`.
-
----
 
 ## Task 6 — Train and evaluate three classifiers
 **Author:** Jenna Alqurashi (231614, `Jennaalqurashi`)
@@ -206,8 +230,6 @@ Local notebook (W09B 10K → 5% = 490 rows):
 
 **Top model by AUC: Random Forest (0.8061 cluster, 0.8701 local).**
 
----
-
 ## Task 7 — Random Forest feature importances
 **Author:** Dina Alhudaithi (221466, `DinaAlhudaithi`)
 
@@ -230,8 +252,6 @@ crime types. Trees split on individual values of the index and side-step that is
 
 # Phase C — Deployment evidence
 
----
-
 ## Task 9 — Local execution
 **Author:** Aseel Alzahrani (221581, `Aseel-Alz`)
 
@@ -247,7 +267,29 @@ Spark master: local[*]
 10,000 rows generated in-memory by the W09B-style generator. All Tasks 1–7 ran;
 outputs are embedded in `M2_Bigdataproject.ipynb`.
 
----
+## Task 10 — Cluster execution: client mode
+**Author:** Dana Alnahas (231515, `d-1117`)
+
+```bash
+dalnahas@master-node:~$ source /etc/profile.d/hadoop.sh
+dalnahas@master-node:~$ source /etc/profile.d/spark.sh
+dalnahas@master-node:~$ spark-submit --master yarn --deploy-mode client \
+    --num-executors 2 --executor-memory 768m --executor-cores 1 \
+    --driver-memory 1g notebook_runnable.py
+```
+
+Excerpt from `output/cluster_yarn_log.txt`:
+
+```
+Environment: cluster
+Spark version: 3.5.4
+Spark master: yarn
+Total rows: 793,072
+Phase B working set: 39,534 rows (5% sample, seed=42)
+Train: 31,728   Test: 7,806
+```
+
+YARN application: `application_1771402826595_0361`.
 
 ## Task 11 — spark-submit (cluster mode)
 **Author:** Reem Alswailem (231079, `sengineer25`)
@@ -304,32 +346,6 @@ Train rows: 31,728   Test rows: 7,806
 | Jenna Alqurashi (`Jennaalqurashi`)| 2, 6  | Spark SQL location query; three-classifier training + evaluation |
 | Dina Alhudaithi (`DinaAlhudaithi`)| 3, 7  | Year-trend table + matplotlib chart; Random Forest feature importances |
 | Dana Alnahas (`d-1117`)           | 4, 10 | Arrest-rate analysis; yarn-client cluster execution evidence |
-
-## How to reproduce
-
-Locally:
-```bash
-python3 -m venv venv && source venv/bin/activate
-pip install pyspark==3.5.1 pandas matplotlib jupyter numpy
-jupyter nbconvert --to notebook --execute M2_Bigdataproject.ipynb --output M2_Bigdataproject.ipynb
-```
-
-On the cluster:
-```bash
-ssh <user>@134.209.172.50
-source /etc/profile.d/hadoop.sh
-source /etc/profile.d/spark.sh
-# one-time deps for python3.12
-curl -sS https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-python3.12 get-pip.py --user
-python3.12 -m pip install --user numpy 'setuptools>=68'
-# Phase B standalone (cluster mode):
-spark-submit --master yarn --deploy-mode cluster \
-    --num-executors 2 --executor-memory 1g --executor-cores 1 \
-    --driver-memory 1g arrest_predictor.py
-```
-
----
 
 ## How to reproduce
 
