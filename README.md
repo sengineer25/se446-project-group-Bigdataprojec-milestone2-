@@ -82,7 +82,54 @@ in-memory rather than the disk shuffle required by streaming MapReduce.
 
 ---
 
+# Phase B — MLlib arrest predictor (5% sample)
+
+The May 2026 spec update mandates training on a 5% sample. We apply
+`df.sample(fraction=0.05, seed=42)` before any feature engineering. On the cluster
+this gives 39,534 rows (Train 31,728 / Test 7,806); locally the W09B 10K generator
+produces 490 sampled rows.
+
+---
+
+## Task 5 — Feature pipeline
+**Author:** Aseel Alzahrani (221581, `Aseel-Alz`)
+
+`StringIndexer` for `Primary Type` and `Domestic_str`, `VectorAssembler` over
+`[primary_type_idx, Hour, District, domestic_idx]`. 80/20 split with `seed=42`.
+
+Sample feature vectors (cluster):
+```
++------------+----------------+----+--------+------------+------------+--------------------+-----+
+|Primary Type|primary_type_idx|Hour|District|Domestic_str|domestic_idx|features            |label|
++------------+----------------+----+--------+------------+------------+--------------------+-----+
+|HOMICIDE    |11.0            |10  |25      |false       |0.0         |[11.0,10.0,25.0,0.0]|1    |
+|HOMICIDE    |11.0            |13  |5       |false       |0.0         |[11.0,13.0,5.0,0.0] |1    |
+|HOMICIDE    |11.0            |20  |3       |false       |0.0         |[11.0,20.0,3.0,0.0] |0    |
++------------+----------------+----+--------+------------+------------+--------------------+-----+
+```
+
+Vector layout: `[primary_type_idx, Hour, District, domestic_idx]`.
+
+---
+
 # Phase C — Deployment evidence
+
+---
+
+## Task 9 — Local execution
+**Author:** Aseel Alzahrani (221581, `Aseel-Alz`)
+
+Notebook executed end-to-end with `jupyter nbconvert --execute` (Python 3.9, PySpark
+3.5.1, Java 17). Cell 2 prints:
+
+```
+Environment: local
+Spark version: 3.5.1
+Spark master: local[*]
+```
+
+10,000 rows generated in-memory by the W09B-style generator. All Tasks 1–7 ran;
+outputs are embedded in `M2_Bigdataproject.ipynb`.
 
 ---
 
