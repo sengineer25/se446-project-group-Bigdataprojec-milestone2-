@@ -119,6 +119,38 @@ mapper.
 
 ---
 
+## Task 3 — Year trend
+**Author:** Dina Alhudaithi (221466, `DinaAlhudaithi`)
+
+```python
+yearly_counts = (df.groupBy("Year")
+                   .agg(F.count("*").alias("incidents"))
+                   .orderBy("Year"))
+```
+
+Cluster results (full dataset):
+
+| Year | Incidents | | Year | Incidents |
+|---:|---:|---|---:|---:|
+| 2001 | 467,301 | | 2014 | 825 |
+| 2002 | 205,266 | | 2015 | 1,105 |
+| 2003 | 985 | | 2016 | 1,339 |
+| 2004 | 915 | | 2017 | 1,387 |
+| 2005 | 1,031 | | 2018 | 1,327 |
+| 2006 | 796 | | 2019 | 1,174 |
+| 2007 | 762 | | 2020 | 1,832 |
+| 2008 | 1,010 | | 2021 | 2,399 |
+| 2009 | 910 | | 2022 | 4,678 |
+| 2010 | 695 | | 2023 | 81,461 |
+| 2011 | 770 | | 2024 | 880 |
+| 2012 | 800 | | 2025 | 12,710 |
+| 2013 | 714 | | | |
+
+2001 + 2002 dominate, then a long quiet stretch through 2022, sharp 2023 spike. Local
+chart at `output/yearly_trend.png`.
+
+---
+
 # Phase B — MLlib arrest predictor (5% sample)
 
 The May 2026 spec update mandates training on a 5% sample. We apply
@@ -173,6 +205,26 @@ Local notebook (W09B 10K → 5% = 490 rows):
 - RF: (5641, 1, 1438, 725)
 
 **Top model by AUC: Random Forest (0.8061 cluster, 0.8701 local).**
+
+---
+
+## Task 7 — Random Forest feature importances
+**Author:** Dina Alhudaithi (221466, `DinaAlhudaithi`)
+
+```
+primary_type_idx   0.7712  *************************************
+Hour               0.0807  ****
+District           0.0763  ****
+domestic_idx       0.0718  ****
+```
+
+`primary_type_idx` dominates because the per-crime arrest-rate distribution from
+Task 4 is itself dominated by crime type (NARCOTICS ≈ 99% vs THEFT ≈ 14%). Once a
+tree splits on the crime type it has most of its answer.
+
+Logistic Regression underperforms the tree models because it treats `primary_type_idx`
+as a numeric feature with a linear coefficient — implying a meaningless ordering between
+crime types. Trees split on individual values of the index and side-step that issue.
 
 ---
 
